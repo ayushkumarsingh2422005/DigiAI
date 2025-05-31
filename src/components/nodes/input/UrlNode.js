@@ -14,16 +14,26 @@ const UrlNode = ({ id, data }) => {
     updateNodeData(id, { url: newUrl });
   };
 
-  const extractContent = () => {
+  const extractContent = async () => {
     setLoading(true);
-    // In a real app, you would fetch and extract content from the URL here
-    // For now, we'll simulate it with a timeout
-    setTimeout(() => {
-      const extractedContent = `Content extracted from ${url}`;
-      updateNodeData(id, { url, extractedContent });
-      setLoading(false);
+    try {
+      const response = await fetch('/api/scrape', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      
+      updateNodeData(id, { url, extractedContent: data.content });
       setExtracted(true);
-    }, 1000);
+    } catch (error) {
+      console.error('Failed to extract content:', error);
+      // You might want to show an error message to the user here
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
