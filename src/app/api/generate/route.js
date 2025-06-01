@@ -1,44 +1,55 @@
-// pages/api/generate.js
-import { GoogleGenAI } from '@google/genai';
+// app/api/generate/route.js
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { NextResponse } from 'next/server';
 
-const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const { prompt, context = '', images = [] } = req.body;
-
-  if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
-
+export async function POST(req) {
   try {
+    const body = await req.json();
+    const { prompt, context = '', images = [] } = body;
+
+    console.log('Prompt:', prompt, 'Context:', context);
+
+    if (!prompt) {
+      return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+    }
+
     let result;
 
     if (images.length > 0) {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-vision' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
 
       const parts = [
         { text: prompt },
         ...images.map(image => ({
           inlineData: {
             mimeType: 'image/jpeg',
-            data: image.base64Data
-          }
-        }))
+            data: image.base64Data,
+          },
+        })),
       ];
 
-      const response = await model.generateContent(parts);
-      result = await response.response.text();
+      const response = await model.generateContent({ contents: [{ role: 'user', parts }] });
+      result = response.response.text();
     } else {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-001' });
+
       const fullPrompt = context ? `Context:\n${context}\n\nPrompt:\n${prompt}` : prompt;
 
-      const response = await model.generateContent(fullPrompt);
-      result = await response.response.text();
+      const response = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+      });
+      result = response.response.text();
     }
 
-    return res.status(200).json({ result });
+    return NextResponse.json({ result: result });
   } catch (error) {
     console.error('Gemini API Error:', error);
-    return res.status(500).json({ error: 'Error generating response' });
+    return NextResponse.json({ error: 'Error generating response' }, { status: 500 });
   }
+}
+
+export function GET() {
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
 }

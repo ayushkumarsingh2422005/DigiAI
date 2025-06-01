@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
+'use client'; // Ensure client-side rendering
+
+import React, { useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 import useFlowStore from '../../../store/flowStore';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Initialize PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 const PDFNode = ({ id, data }) => {
+  const [pdfjsLib, setPdfjsLib] = useState(null);
   const [pdfName, setPdfName] = useState('');
   const [pdfContent, setPdfContent] = useState(null);
   const [loading, setLoading] = useState(false);
   const updateNodeData = useFlowStore((state) => state.updateNodeData);
 
+  useEffect(() => {
+    // Load PDF.js only on client side
+    import('pdfjs-dist').then((pdfjs) => {
+      pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+      setPdfjsLib(pdfjs);
+    });
+  }, []);
+
   const extractText = async (file) => {
+    if (!pdfjsLib) return;
+
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -34,7 +43,7 @@ const PDFNode = ({ id, data }) => {
 
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (file && pdfjsLib) {
       setLoading(true);
       setPdfName(file.name);
       try {

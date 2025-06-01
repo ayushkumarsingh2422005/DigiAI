@@ -8,7 +8,7 @@ export async function generateGeminiResponse(prompt, context = '') {
       context,
       images: [] // no images for text-only
     });
-
+    // alert('Response:', response.data.result);
     return response.data.result;
   } catch (error) {
     console.error('Error generating response:', error);
